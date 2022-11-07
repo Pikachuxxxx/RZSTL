@@ -1,21 +1,40 @@
+-- Internal libraies include dirs
+include 'Scripts/premake/common/internal_includes.lua'
+
 project "RZSTL"
     language "C++"
     kind "StaticLib"
 
-    files 
+    files
     {
-        "src/**",
-        "include/**"
+        "src/**.cpp",
+        "include/**.h",
+        "./vendor/EABase/include/**.h",
+        "./vendor/EASTL/include/**.h",
+        "./vendor/EASTL/source/**.cpp"
     }
 
     sysincludedirs
     {
-        "./include"
+        "./include",
+        "./vendor/EABase/include",
+        "./vendor/EABase/include/Common",
+        "./vendor/EASTL/include",
+        "%{InternalIncludeDir.RazixMemory}"
     }
 
      includedirs
     {
-        "./include"
+        "./include",
+        "./vendor/EABase/include",
+        "./vendor/EABase/include/Common",
+        "./vendor/EASTL/include",
+        "%{InternalIncludeDir.RazixMemory}"
+    }
+
+    links
+    {
+        "RazixMemory"
     }
 
     filter "system:windows"
