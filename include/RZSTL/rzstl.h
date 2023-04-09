@@ -7,8 +7,8 @@
 namespace Razix {
     // Namespace to switch C++ STL with other STLs
     namespace rzstl {
-        template<typename T>
-        using initializer_list = std::initializer_list<T>;
+        //template<typename T>
+        //using initializer_list = std::initializer_list<T>;
     }
 }    // namespace Razix
 

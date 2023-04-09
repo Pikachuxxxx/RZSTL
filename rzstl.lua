@@ -14,7 +14,7 @@ project "RZSTL"
         "./vendor/EASTL/source/**.cpp"
     }
 
-    sysincludedirs
+    externalincludedirs
     {
         "./include",
         "./vendor/EABase/include",
