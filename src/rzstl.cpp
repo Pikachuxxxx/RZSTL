@@ -7,7 +7,7 @@
         #define DEFINE_OVERLOADS
 
 // Override some operators for EASTL
-int Vsnprintf8(char8_t* p, size_t n, const char8_t* pFormat, va_list arguments)
+int Vsnprintf8(char* p, size_t n, const char* pFormat, va_list arguments)
 {
     return vsnprintf(p, n, pFormat, arguments);
 }
