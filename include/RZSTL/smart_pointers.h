@@ -6,6 +6,7 @@
 #include <EASTL/shared_ptr.h>
 
 #undef CUSTOM_SMART_PTR
+//#define CUSTOM_SMART_PTR
 
 // https://stackoverflow.com/questions/44413478/abstract-class-and-unique-pointer
 
@@ -19,7 +20,7 @@ namespace Razix {
         /// <summary>
         /// Manages the counter for different types of smart pointers and global reference count
         /// </summary>
-        class RefCounterManager : public RZMemoryRoot
+        class RefCounterManager
         {
         public:
             RefCounterManager();
@@ -110,17 +111,17 @@ namespace Razix {
             template<typename U>
             inline Reference(const Reference<U>& moving) noexcept
             {
-                U* movingPtr = moving.GetPointer();
+                U* movingPtr = moving.get();
 
                 T* castPointer = static_cast<T*>(movingPtr);
 
                 unref();
 
                 if (castPointer != nullptr) {
-                    if (moving.GetPointer() == m_Ptr)
+                    if (moving.get() == m_Ptr)
                         return;
 
-                    if (moving.GetCounter() && moving.GetPointer()) {
+                    if (moving.GetCounter() && moving.get()) {
                         m_Ptr     = castPointer;
                         m_Counter = moving.GetCounter();
                         m_Counter->Reference();
@@ -130,24 +131,24 @@ namespace Razix {
 
             ~Reference() noexcept { unref(); }
 
-            inline T* GetPointer() const { return m_Ptr; }
+            inline T* get() const { return m_Ptr; }
 
-            inline RefCounterManager* GetCounter() const { m_Counter; }
+            inline RefCounterManager* GetCounter() const { return m_Counter; }
 
-            inline T* Release() noexcept
+            inline T* release() noexcept
             {
                 T* tmp = nullptr;
                 if (m_Counter->Unreference()) {
                     delete m_Counter;
                     m_Counter = nullptr;
                 }
-                std::swap(tmp, m_Ptr);
+                eastl::swap(tmp, m_Ptr);
                 m_Ptr = nullptr;
 
                 return tmp;
             }
 
-            inline void Reset(T* p_ptr = nullptr)
+            inline void reset(T* p_ptr = nullptr)
             {
                 unref();
 
@@ -168,21 +169,21 @@ namespace Razix {
             }
             inline Reference& operator=(T* newData)
             {
-                Reset(newData);
+                reset(newData);
                 return *this;
             }
             template<typename U>
             inline Reference& operator=(const Reference<U>& moving)
             {
-                U* movingPtr = moving.GetPointer();
+                U* movingPtr = moving.get();
 
                 T* castPointer = dynamic_cast<T*>(movingPtr);
 
                 unref();
 
                 if (castPointer != nullptr) {
-                    if (moving.GetCounter() && moving.GetPointer()) {
-                        m_Ptr     = moving.GetPointer();
+                    if (moving.GetCounter() && moving.get()) {
+                        m_Ptr     = moving.get();
                         m_Counter = moving.GetCounter();
                         m_Counter->reference();
                     }
@@ -191,10 +192,10 @@ namespace Razix {
             }
             inline Reference& operator=(rzstl::nullptr_t)
             {
-                Reset();
+                reset();
                 return *this;
             }
-            inline T*                 operator->() const { return &(*this); }
+            inline T*                 operator->() const { return const_cast<T*>(reinterpret_cast<const T*>(this)); }
             inline T&                 operator&() const { return *m_Ptr; }
             inline T&                 operator[](int index) const { return m_Ptr[index]; }
             inline explicit constexpr operator bool() const { return m_Ptr != nullptr; }
@@ -205,8 +206,8 @@ namespace Razix {
             inline constexpr bool     operator!=(const Reference<T>& p_r) const { return m_Ptr != p_r.m_Ptr; }
             inline void               swap(Reference& other) noexcept
             {
-                std::swap(m_Ptr, other.m_Ptr);
-                std::swap(m_Counter, other.m_Counter);
+                eastl::swap(m_Ptr, other.m_Ptr);
+                eastl::swap(m_Counter, other.m_Counter);
             }
             template<typename U>
             inline Reference<U> As() const
@@ -232,8 +233,8 @@ namespace Razix {
                 m_Ptr     = nullptr;
 
                 // Check if
-                if (pFrom.GetCounter() && pFrom.GetPointer()) {
-                    m_Ptr     = pFrom.GetPointer();
+                if (pFrom.GetCounter() && pFrom.get()) {
+                    m_Ptr     = pFrom.get();
                     m_Counter = pFrom.GetCounter();
                     m_Counter->Reference();
                 }
@@ -245,8 +246,6 @@ namespace Razix {
             /// <param name="pFrom"></param>
             inline void refPointer(T* ptr)
             {
-                RAZIX_ASSERT(ptr, "Creating shared pointer with nullptr");
-
                 m_Ptr     = ptr;
                 m_Counter = new rzstl::RefCounterManager();
                 m_Counter->InitRef();
@@ -301,7 +300,7 @@ namespace Razix {
             WeakReference(const WeakReference<T>& rhs) noexcept
                 : m_Ptr(rhs.m_Ptr), m_Counter(rhs.m_Counter)
             {
-                AddRef();
+                add_ref();
             }
 
             explicit WeakReference(T* ptr) noexcept
@@ -315,13 +314,13 @@ namespace Razix {
             WeakReference(const WeakReference<U>& rhs) noexcept
                 : m_Ptr(rhs.m_Ptr), m_Counter(rhs.m_Counter)
             {
-                AddRef();
+                add_ref();
             }
 
             WeakReference(const Reference<T>& rhs) noexcept
-                : m_Ptr(rhs.GetPointer()), m_Counter(rhs.m_Counter)
+                : m_Ptr(rhs.get()), m_Counter(rhs.m_Counter)
             {
-                AddRef();
+                add_ref();
             }
 
             ~WeakReference() noexcept
@@ -331,19 +330,19 @@ namespace Razix {
                 }
             }
 
-            void AddRef()
+            void add_ref()
             {
                 m_Counter->WeakReference();
             }
 
-            bool Expired() const
+            bool expired() const
             {
                 return m_Counter ? m_Counter->GetReferenceCount() <= 0 : true;
             }
 
-            Reference<T> Lock() const
+            Reference<T> lock() const
             {
-                if (Expired())
+                if (expired())
                     return Reference<T>();
                 else
                     return Reference<T>(m_Ptr);
@@ -428,12 +427,12 @@ namespace Razix {
 
             inline Owned(Owned&& moving) noexcept
             {
-                moving.Swap(*this);
+                moving.swap(*this);
             }
 
             inline Owned& operator=(Owned&& moving) noexcept
             {
-                moving.Swap(*this);
+                moving.swap(*this);
                 return *this;
             }
 
@@ -453,7 +452,7 @@ namespace Razix {
 
             inline Owned& operator=(rzstl::nullptr_t)
             {
-                Reset();
+                reset();
                 return *this;
             }
 
@@ -468,32 +467,33 @@ namespace Razix {
             }
 
             // Access to smart pointer state
-            T* GetOwnedPtr() const
+            T* get() const
             {
                 return m_Ptr;
             }
+
             explicit operator bool() const
             {
                 return m_Ptr;
             }
 
             // Modify object state
-            inline T* Release()
+            inline T* release()
             {
                 T* result = nullptr;
-                std::swap(result, m_Ptr);
+                eastl::swap(result, m_Ptr);
                 return result;
             }
 
-            inline void Reset()
+            inline void reset()
             {
-                T* tmp = Release();
+                T* tmp = release();
                 delete tmp;
             }
 
-            inline void Swap(Owned& src) noexcept
+            inline void swap(Owned& src) noexcept
             {
-                std::swap(m_Ptr, src.m_Ptr);
+                eastl::swap(m_Ptr, src.m_Ptr);
             }
 
         private:
@@ -519,7 +519,7 @@ namespace Razix {
         }
 
         template<class T>
-        UniqueRef = Owned<T>;
+        using UniqueRef = Owned<T>;
 
         template<typename T, typename... Args>
         UniqueRef<T> CreateUniqueRef(Args&&... args)
@@ -530,7 +530,7 @@ namespace Razix {
 
         template<class T>
         using WeakRef = WeakReference<T>;
-#else
+#elif defined(CUSTOM_SMART_PTR_EASTL)
         template<class T>
         using Ref = eastl::shared_ptr<T>;
 
@@ -550,6 +550,27 @@ namespace Razix {
         UniqueRef<T> CreateUniqueRef(Args&&... args)
         {
             return eastl::make_unique<T>(eastl::forward<Args>(args)...);
+        }
+#else
+        template<class T>
+        using Ref = std::shared_ptr<T>;
+
+        template<typename T, typename... Args>
+        Ref<T> CreateRef(Args&&... args)
+        {
+            return std::make_shared<T>(std::forward<Args>(args)...);
+        }
+
+        template<class T>
+        using WeakRef = std::weak_ptr<T>;
+
+        template<class T>
+        using UniqueRef = std::unique_ptr<T>;
+
+        template<typename T, typename... Args>
+        UniqueRef<T> CreateUniqueRef(Args&&... args)
+        {
+            return std::make_unique<T>(std::forward<Args>(args)...);
         }
 #endif
     }    // namespace rzstl

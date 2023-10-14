@@ -3,15 +3,13 @@
 
 #include <EASTL/atomic.h>
 
-#include "RZMemoryRoot.h"
-
 namespace Razix {
     namespace rzstl {
 
         /// <summary>
         /// Counts the reference of the Object as it's ownership is being handed over
         /// </summary>
-        struct ReferenceCounter : public Razix::RZMemoryRoot
+        struct ReferenceCounter
         {
             /// Global object reference count
             eastl::atomic<int> count = 0;
